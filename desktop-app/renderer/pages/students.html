@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com; connect-src https://*.supabase.co https://*.tile.openstreetmap.org https://maps.googleapis.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://maps.gstatic.com https://*.googleapis.com; font-src https://fonts.gstatic.com;" />
+  <title>Phoenix Transport - Student Management</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <style>
+    .dashboard-layout {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #5C0E1A 0%, #8B1A2B 100%);
+      color: var(--color-white);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 0 16px 20px;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-brand h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      flex: 1;
+    }
+
+    .sidebar-nav li a {
+      display: block;
+      padding: 10px 20px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sidebar-nav li a:hover,
+    .sidebar-nav li a.active {
+      background-color: rgba(212, 168, 67, 0.15);
+      color: #D4A843;
+      border-left: 3px solid #D4A843;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-footer button {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-family: var(--font-family);
+    }
+
+    .sidebar-footer button:hover {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    /* Student Stats */
+    .student-stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .student-stat-card {
+      background: var(--color-surface);
+      padding: 14px;
+      border-radius: var(--border-radius-lg);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .student-stat-card .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .student-stat-card .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .stat-success .stat-value { color: var(--color-success); }
+    .stat-warning .stat-value { color: var(--color-warning); }
+    .stat-danger .stat-value { color: var(--color-danger); }
+
+    /* Status badges */
+    .status-active-student { background: #d4edda; color: #155724; }
+    .status-suspended-student { background: #fff3cd; color: #856404; }
+    .status-removed-student { background: #f8d7da; color: #721c24; }
+
+    /* Guardian section */
+    .guardian-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .guardian-section h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .guardian-row {
+      background: #f9f8f6;
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius);
+      padding: 12px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .guardian-row .guardian-row-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .guardian-row .guardian-row-header span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-light);
+    }
+
+    .guardian-row .btn-remove-guardian {
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger);
+      border-radius: var(--border-radius-sm);
+    }
+
+    .guardian-row .btn-remove-guardian:hover {
+      background: var(--color-danger);
+      color: #fff;
+    }
+
+    .guardian-row .form-row {
+      margin-bottom: 8px;
+    }
+
+    .guardian-row .form-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .primary-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--color-text-light);
+    }
+
+    .primary-check input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Wider modal for student form */
+    .modal-lg .modal-content {
+      max-width: 680px;
+    }
+
+    /* Capacity warning */
+    .capacity-warning {
+      background: #fff3cd;
+      color: #856404;
+      padding: 10px 14px;
+      border-radius: var(--border-radius);
+      font-size: 13px;
+      border: 1px solid #ffc107;
+      margin-bottom: 12px;
+    }
+
+    .capacity-warning.capacity-error {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="dashboard-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <h2>🚌 Phoenix Transport</h2>
+        </div>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="vehicles.html">Vehicles</a></li>
+          <li><a href="routes.html">Routes</a></li>
+          <li><a href="schedules.html">Schedules</a></li>
+          <li><a href="students.html" class="active">Students</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="tracking.html">Live Tracking</a></li>
+          <li><a href="billing.html">Billing</a></li>
+          <li><a href="reports.html">Reports</a></li>
+          <li><a href="audit.html">Audit Log</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="logout-btn">Sign Out</button>
+          <div style="text-align:center;margin-top:12px;font-size:10px;color:rgba(255,255,255,0.4);">
+            Developed by Freddy<br><span style="color:#D4A843;font-weight:600;letter-spacing:1px;">PhoenixInc</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Student List View -->
+        <section id="student-list-view">
+          <div class="page-header">
+            <h2>Student Management</h2>
+            <button id="btn-new-student" class="btn btn-primary">+ Register Student</button>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="student-stats-row">
+            <div class="student-stat-card">
+              <div class="stat-label">Total Students</div>
+              <div class="stat-value" id="stat-total">—</div>
+            </div>
+            <div class="student-stat-card stat-success">
+              <div class="stat-label">Active</div>
+              <div class="stat-value" id="stat-active">—</div>
+            </div>
+            <div class="student-stat-card stat-warning">
+              <div class="stat-label">Suspended</div>
+              <div class="stat-value" id="stat-suspended">—</div>
+            </div>
+            <div class="student-stat-card stat-danger">
+              <div class="stat-label">Removed</div>
+              <div class="stat-value" id="stat-removed">—</div>
+            </div>
+          </div>
+
+          <!-- Filters Row -->
+          <div class="filters-row">
+            <input type="text" id="search-input" class="input-field" placeholder="Search by name, grade, school, or guardian..." style="flex:2;max-width:400px;" />
+            <select id="status-filter" class="input-field">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="removed">Removed</option>
+            </select>
+            <select id="route-filter" class="input-field">
+              <option value="">All Routes</option>
+            </select>
+          </div>
+
+          <!-- Student Table -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Grade</th>
+                  <th>School</th>
+                  <th>Pickup Address</th>
+                  <th>Route</th>
+                  <th>Stop</th>
+                  <th>Guardians</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="student-table-body">
+                <tr class="empty-row">
+                  <td colspan="9">Loading students...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Student Form Modal (Create / Edit) -->
+  <div id="student-modal" class="modal modal-lg hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="student-modal-title">Register Student</h3>
+        <button id="btn-close-modal" class="btn-icon" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="form-error" class="error-message hidden"></div>
+        <div id="capacity-info" class="capacity-warning hidden"></div>
+        <form id="student-form">
+          <!-- Student Fields -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-full-name">Full Name *</label>
+              <input type="text" id="form-full-name" class="input-field" required placeholder="e.g. Thabo Mokoena" />
+            </div>
+            <div class="form-group">
+              <label for="form-grade">Grade *</label>
+              <input type="text" id="form-grade" class="input-field" required placeholder="e.g. Grade 8" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-school-name">School Name *</label>
+              <input type="text" id="form-school-name" class="input-field" required placeholder="e.g. Phoenix High School" />
+            </div>
+            <div class="form-group">
+              <label for="form-school-id">School (from registered schools)</label>
+              <select id="form-school-id" class="input-field">
+                <option value="">— Select School —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="form-pickup-address">Pickup Address (search with Google Places)</label>
+              <input type="text" id="form-pickup-address" class="input-field" placeholder="Start typing a pickup address..." style="border-color:#D4A843;" />
+              <input type="hidden" id="form-pickup-lat" />
+              <input type="hidden" id="form-pickup-lng" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-status">Status</label>
+              <select id="form-status" class="input-field">
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-route">Assigned Route</label>
+              <select id="form-route" class="input-field">
+                <option value="">— None —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="form-stop">Assigned Stop</label>
+              <select id="form-stop" class="input-field" disabled>
+                <option value="">— Select Route First —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Guardian Section -->
+          <div class="guardian-section">
+            <h4>
+              <span>Guardians (at least 1 required) *</span>
+              <button type="button" id="btn-add-guardian" class="btn btn-sm btn-secondary">+ Add Guardian</button>
+            </h4>
+            <div id="guardians-container">
+              <!-- Guardian rows rendered dynamically -->
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btn-cancel-form" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="btn-save-student" class="btn btn-primary">Save Student</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h3>Confirm Removal</h3>
+      </div>
+      <div class="modal-body">
+        <p id="delete-message">Are you sure you want to remove this student? The student will be marked as removed (soft-delete).</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-delete" class="btn btn-secondary">Cancel</button>
+        <button id="btn-confirm-delete" class="btn btn-danger">Remove Student</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../scripts/init.js"></script>
+  <script src="../scripts/auth-guard.js"></script>
+  <script type="module" src="../scripts/supabase-bundle.js"></script>
+  <script src="../scripts/google-places.js"></script>
+  <script src="../scripts/students.js" defer></script>
+</body>
+</html>

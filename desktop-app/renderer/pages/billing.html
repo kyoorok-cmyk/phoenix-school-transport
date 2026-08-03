@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src https://*.supabase.co; style-src 'self' 'unsafe-inline';" />
+  <title>Billing - Phoenix Transport</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <style>
+    .dashboard-layout {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #5C0E1A 0%, #8B1A2B 100%);
+      color: var(--color-white);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 0 16px 20px;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-brand h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      flex: 1;
+    }
+
+    .sidebar-nav li a {
+      display: block;
+      padding: 10px 20px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sidebar-nav li a:hover,
+    .sidebar-nav li a.active {
+      background-color: rgba(212, 168, 67, 0.15);
+      color: #D4A843;
+      border-left: 3px solid #D4A843;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-footer button {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-family: var(--font-family);
+    }
+
+    .sidebar-footer button:hover {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    /* Billing-specific styles */
+    .billing-stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .billing-stat-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-lg);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .billing-stat-card .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .billing-stat-card .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    .billing-stat-card.stat-pending .stat-value { color: #f39c12; }
+    .billing-stat-card.stat-overdue .stat-value { color: #c0392b; }
+    .billing-stat-card.stat-paid .stat-value { color: #27ae60; }
+    .billing-stat-card.stat-outstanding .stat-value { color: var(--color-primary); }
+
+    /* Invoice status badges */
+    .invoice-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-paid { background: #d4edda; color: #155724; }
+    .badge-overdue { background: #f8d7da; color: #721c24; }
+    .badge-cancelled { background: #e2e3e5; color: #383d41; }
+
+    /* Filters row */
+    .billing-filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .billing-filters .input-field {
+      min-width: 140px;
+    }
+
+    .billing-filters .search-input {
+      flex: 1;
+      max-width: 240px;
+    }
+
+    /* Actions row */
+    .billing-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .billing-actions .month-picker {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .billing-actions .month-picker label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-light);
+    }
+
+    /* Table container */
+    .table-container {
+      border-radius: var(--border-radius-lg);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    /* Fee configuration section */
+    .fee-config-section {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-lg);
+      padding: 20px;
+      margin-top: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .fee-config-section h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid rgba(139, 26, 43, 0.1);
+    }
+
+    .fee-table .fee-input {
+      width: 110px;
+      padding: 6px 10px;
+      font-size: 13px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-sm);
+      text-align: right;
+    }
+
+    .fee-table .fee-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba(139, 26, 43, 0.1);
+    }
+
+    .fee-table .btn-save-fee {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+
+    .fee-table .fee-saved {
+      color: var(--color-success);
+      font-size: 11px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .fee-table .fee-saved.show {
+      opacity: 1;
+    }
+
+    /* Section tabs */
+    .billing-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .billing-tabs .tab-btn {
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      margin-bottom: -2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .billing-tabs .tab-btn:hover {
+      color: var(--color-text);
+    }
+
+    .billing-tabs .tab-btn.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Section header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    /* Success toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: var(--border-radius);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-white);
+      box-shadow: var(--shadow-lg);
+      z-index: 2000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast-success { background: var(--color-success); }
+    .toast-error { background: var(--color-danger); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="dashboard-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <h2>🚌 Phoenix Transport</h2>
+        </div>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="vehicles.html">Vehicles</a></li>
+          <li><a href="routes.html">Routes</a></li>
+          <li><a href="schedules.html">Schedules</a></li>
+          <li><a href="students.html">Students</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="tracking.html">Live Tracking</a></li>
+          <li><a href="billing.html" class="active">Billing</a></li>
+          <li><a href="reports.html">Reports</a></li>
+          <li><a href="audit.html">Audit Log</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="logout-btn">Sign Out</button>
+          <div style="text-align:center;margin-top:12px;font-size:10px;color:rgba(255,255,255,0.4);">
+            Developed by Freddy<br><span style="color:#D4A843;font-weight:600;letter-spacing:1px;">PhoenixInc</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="page-header">
+          <h2>Billing &amp; Invoicing</h2>
+        </div>
+
+        <!-- Invoice Status Dashboard -->
+        <div class="billing-stats-row">
+          <div class="billing-stat-card stat-pending">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value" id="stat-pending">R 0.00</div>
+          </div>
+          <div class="billing-stat-card stat-overdue">
+            <div class="stat-label">Overdue</div>
+            <div class="stat-value" id="stat-overdue">R 0.00</div>
+          </div>
+          <div class="billing-stat-card stat-paid">
+            <div class="stat-label">Paid This Month</div>
+            <div class="stat-value" id="stat-paid">R 0.00</div>
+          </div>
+          <div class="billing-stat-card stat-outstanding">
+            <div class="stat-label">Outstanding Balance</div>
+            <div class="stat-value" id="stat-outstanding">R 0.00</div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="billing-tabs">
+          <button class="tab-btn active" data-tab="invoices-tab">Invoices</button>
+          <button class="tab-btn" data-tab="fee-config-tab">Fee Configuration</button>
+        </div>
+
+        <!-- Invoices Tab -->
+        <div id="invoices-tab" class="tab-content active">
+          <!-- Generate Invoices Action -->
+          <div class="billing-actions">
+            <div class="month-picker">
+              <label for="billing-month">Billing Month:</label>
+              <input type="month" id="billing-month" class="input-field" />
+            </div>
+            <button id="btn-generate-invoices" class="btn btn-primary">Generate Invoices</button>
+            <button id="btn-record-payment" class="btn btn-secondary">Record Payment</button>
+          </div>
+
+          <!-- Invoice Filters -->
+          <div class="billing-filters">
+            <input type="text" id="invoice-search" class="input-field search-input" placeholder="Search student name or invoice #..." />
+            <select id="filter-status" class="input-field">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <input type="month" id="filter-month" class="input-field" />
+            <select id="filter-route" class="input-field">
+              <option value="">All Routes</option>
+            </select>
+          </div>
+
+          <!-- Invoice Table -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Student</th>
+                  <th>Route</th>
+                  <th>Amount</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoice-table-body">
+                <tr class="empty-row"><td colspan="7">Loading invoices...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Fee Configuration Tab -->
+        <div id="fee-config-tab" class="tab-content">
+          <div class="fee-config-section">
+            <h3>Monthly Transport Fee per Route</h3>
+            <p style="margin-bottom:16px;font-size:13px;color:var(--color-text-light);">
+              Set the monthly fee charged per student on each route. Changes take effect from the next billing cycle.
+            </p>
+            <table class="data-table fee-table">
+              <thead>
+                <tr>
+                  <th>Route Name</th>
+                  <th>School</th>
+                  <th>Active Students</th>
+                  <th>Monthly Fee (R)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="fee-table-body">
+                <tr class="empty-row"><td colspan="5">Loading routes...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Payment Recording Modal -->
+  <div id="payment-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Record Payment</h3>
+        <button id="btn-close-payment-modal" class="btn-icon">&times;</button>
+      </div>
+      <form id="payment-form" class="modal-body">
+        <div class="form-row">
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="payment-invoice">Invoice *</label>
+            <select id="payment-invoice" class="input-field" required>
+              <option value="">Select an invoice...</option>
+            </select>
+          </div>
+        </div>
+        <div id="selected-invoice-info" class="hidden" style="background:#f8f6f3;padding:10px 14px;border-radius:var(--border-radius);margin-bottom:14px;font-size:12px;color:var(--color-text-light);">
+          <span id="invoice-info-text"></span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="payment-amount">Amount (R) *</label>
+            <input type="number" id="payment-amount" class="input-field" min="0.01" step="0.01" required placeholder="0.00" />
+          </div>
+          <div class="form-group">
+            <label for="payment-method">Payment Method *</label>
+            <select id="payment-method" class="input-field" required>
+              <option value="">Select method...</option>
+              <option value="eft">EFT</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="debit_order">Debit Order</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="payment-date">Payment Date *</label>
+            <input type="date" id="payment-date" class="input-field" required />
+          </div>
+          <div class="form-group">
+            <label for="payment-reference">Reference</label>
+            <input type="text" id="payment-reference" class="input-field" placeholder="e.g. TXN-12345" />
+          </div>
+        </div>
+        <div id="payment-form-error" class="error-message hidden"></div>
+        <div class="modal-footer">
+          <button type="button" id="btn-cancel-payment" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Record Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="../scripts/init.js"></script>
+  <script src="../scripts/auth-guard.js"></script>
+  <script type="module" src="../scripts/supabase-bundle.js"></script>
+  <script src="../scripts/billing.js" defer></script>
+</body>
+</html>

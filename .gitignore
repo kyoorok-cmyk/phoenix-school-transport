@@ -1,0 +1,10 @@
+﻿node_modules/
+dist/
+build/
+.env
+*.log
+.DS_Store
+desktop-app/node_modules/
+admin-portal/node_modules/
+driver-app/.dart_tool/
+driver-app/build/

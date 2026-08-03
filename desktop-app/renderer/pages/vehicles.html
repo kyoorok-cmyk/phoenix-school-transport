@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src https://*.supabase.co; style-src 'self' 'unsafe-inline';" />
+  <title>Vehicle Management - Phoenix Transport</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <link rel="stylesheet" href="../styles/vehicles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1>Phoenix School Transport</h1>
+      <nav class="app-nav">
+        <a href="dashboard.html">Home</a>
+        <a href="vehicles.html" class="active">Vehicles</a>
+        <a href="routes.html">Routes</a>
+        <a href="schedules.html">Schedules</a>
+        <a href="students.html">Students</a>
+        <a href="schools.html">Schools</a>
+        <a href="tracking.html">Tracking</a>
+        <a href="billing.html">Billing</a>
+        <a href="reports.html">Reports</a>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <!-- Vehicle List View -->
+      <section id="vehicle-list-view">
+        <div class="page-header">
+          <h2>Fleet Management</h2>
+          <button id="btn-new-vehicle" class="btn btn-primary">+ Add Vehicle</button>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="vehicle-stats-row">
+          <div class="vehicle-stat-card">
+            <div class="stat-label">Total Vehicles</div>
+            <div class="stat-value" id="stat-total">—</div>
+          </div>
+          <div class="vehicle-stat-card stat-success">
+            <div class="stat-label">Compliant</div>
+            <div class="stat-value" id="stat-compliant">—</div>
+          </div>
+          <div class="vehicle-stat-card stat-warning">
+            <div class="stat-label">Expiring (30 days)</div>
+            <div class="stat-value" id="stat-expiring">—</div>
+          </div>
+          <div class="vehicle-stat-card stat-danger">
+            <div class="stat-label">Expired</div>
+            <div class="stat-value" id="stat-expired">—</div>
+          </div>
+        </div>
+
+        <!-- Filters Row -->
+        <div class="vehicle-filters">
+          <input type="text" id="search-input" class="input-field search-input" placeholder="Search by registration, make or model..." />
+          <select id="status-filter" class="input-field">
+            <option value="">All Statuses</option>
+            <option value="available">Available</option>
+            <option value="assigned">Assigned</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="decommissioned">Decommissioned</option>
+          </select>
+          <select id="compliance-filter" class="input-field">
+            <option value="">All Compliance</option>
+            <option value="valid">Valid</option>
+            <option value="expiring_soon">Expiring Soon</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+
+        <!-- Vehicle Table -->
+        <div class="table-container">
+          <table id="vehicle-table" class="data-table vehicles-table">
+            <thead>
+              <tr>
+                <th>Registration</th>
+                <th>Make</th>
+                <th>Model</th>
+                <th>Year</th>
+                <th>Seats</th>
+                <th>Compliance</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="vehicle-table-body">
+              <tr class="empty-row">
+                <td colspan="8">Loading vehicles...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Vehicle Form Modal (Create / Edit) -->
+      <div id="vehicle-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="vehicle-modal-title">Add Vehicle</h3>
+            <button id="btn-close-modal" class="btn-icon">&times;</button>
+          </div>
+          <form id="vehicle-form" class="modal-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="form-reg-number">Registration Number *</label>
+                <input type="text" id="form-reg-number" class="input-field" required placeholder="e.g. CA 123-456" />
+              </div>
+              <div class="form-group">
+                <label for="form-make">Make *</label>
+                <input type="text" id="form-make" class="input-field" required placeholder="e.g. Toyota" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="form-model">Model *</label>
+                <input type="text" id="form-model" class="input-field" required placeholder="e.g. Quantum" />
+              </div>
+              <div class="form-group">
+                <label for="form-year">Year *</label>
+                <input type="number" id="form-year" class="input-field" required min="1990" max="2100" placeholder="e.g. 2022" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="form-capacity">Seating Capacity *</label>
+                <input type="number" id="form-capacity" class="input-field" required min="1" max="100" placeholder="e.g. 14" />
+              </div>
+              <div class="form-group">
+                <label for="form-expiry">Compliance Certificate Expiry *</label>
+                <input type="date" id="form-expiry" class="input-field" required />
+                <span id="form-expiry-info" class="expiry-info"></span>
+              </div>
+            </div>
+            <div id="form-error" class="error-message hidden"></div>
+            <div class="modal-footer">
+              <button type="button" id="btn-cancel-form" class="btn btn-secondary">Cancel</button>
+              <button type="submit" id="btn-save-vehicle" class="btn btn-primary">Save Vehicle</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Modal -->
+      <div id="delete-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content modal-sm">
+          <div class="modal-header">
+            <h3>Confirm Delete</h3>
+          </div>
+          <div class="modal-body">
+            <div id="delete-warning" class="delete-warning hidden">
+              <span class="warning-icon">⚠️</span>
+              <span id="delete-warning-text">This vehicle is currently assigned to active trips. Deletion will be blocked by the system.</span>
+            </div>
+            <p id="delete-message">Are you sure you want to delete this vehicle? This action cannot be undone.</p>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-cancel-delete" class="btn btn-secondary">Cancel</button>
+            <button id="btn-confirm-delete" class="btn btn-danger">Delete</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../scripts/init.js"></script>
+  <script src="../scripts/auth-guard.js"></script>
+  <script type="module" src="../scripts/supabase-bundle.js"></script>
+  <script src="../scripts/vehicles.js" defer></script>
+</body>
+</html>

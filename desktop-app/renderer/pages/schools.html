@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com; connect-src https://*.supabase.co https://*.tile.openstreetmap.org https://maps.googleapis.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://maps.gstatic.com https://*.googleapis.com; font-src https://fonts.gstatic.com;" />
+  <title>Phoenix Transport - School Management</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <style>
+    .dashboard-layout {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #5C0E1A 0%, #8B1A2B 100%);
+      color: var(--color-white);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 0 16px 20px;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-brand h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      flex: 1;
+    }
+
+    .sidebar-nav li a {
+      display: block;
+      padding: 10px 20px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sidebar-nav li a:hover,
+    .sidebar-nav li a.active {
+      background-color: rgba(212, 168, 67, 0.15);
+      color: #D4A843;
+      border-left: 3px solid #D4A843;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-footer button {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-family: var(--font-family);
+    }
+
+    .sidebar-footer button:hover {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    /* School Stats */
+    .school-stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .school-stat-card {
+      background: var(--color-surface);
+      padding: 14px;
+      border-radius: var(--border-radius-lg);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .school-stat-card .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .school-stat-card .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+
+    /* Expandable row */
+    .school-row {
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .school-row:hover {
+      background-color: #f9f8f6;
+    }
+
+    .school-row.expanded {
+      background-color: #fdf8eb;
+      border-bottom: none;
+    }
+
+    .expand-icon {
+      display: inline-block;
+      width: 18px;
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+
+    .school-row.expanded .expand-icon {
+      transform: rotate(90deg);
+    }
+
+    .school-detail-row {
+      display: none;
+    }
+
+    .school-detail-row.visible {
+      display: table-row;
+    }
+
+    .school-detail-row td {
+      padding: 0 !important;
+    }
+
+    .school-detail-content {
+      padding: 12px 20px;
+      background: #fefcf5;
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .school-detail-content h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 10px;
+    }
+
+    .students-subtable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .students-subtable th {
+      text-align: left;
+      padding: 6px 10px;
+      background: #f3f0ea;
+      font-weight: 600;
+      color: var(--color-text-light);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .students-subtable td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .students-subtable tr:last-child td {
+      border-bottom: none;
+    }
+
+    .no-students-msg {
+      padding: 12px;
+      color: var(--color-text-muted);
+      font-style: italic;
+      font-size: 12px;
+    }
+
+    /* Modal adjustments */
+    .modal-lg .modal-content {
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="dashboard-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <h2>🚌 Phoenix Transport</h2>
+        </div>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="vehicles.html">Vehicles</a></li>
+          <li><a href="routes.html">Routes</a></li>
+          <li><a href="schedules.html">Schedules</a></li>
+          <li><a href="students.html">Students</a></li>
+          <li><a href="schools.html" class="active">Schools</a></li>
+          <li><a href="tracking.html">Live Tracking</a></li>
+          <li><a href="billing.html">Billing</a></li>
+          <li><a href="reports.html">Reports</a></li>
+          <li><a href="audit.html">Audit Log</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="logout-btn">Sign Out</button>
+          <div style="text-align:center;margin-top:12px;font-size:10px;color:rgba(255,255,255,0.4);">
+            Developed by Freddy<br><span style="color:#D4A843;font-weight:600;letter-spacing:1px;">PhoenixInc</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <section id="school-list-view">
+          <div class="page-header">
+            <h2>School Management</h2>
+            <button id="btn-new-school" class="btn btn-primary">+ Add School</button>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="school-stats-row">
+            <div class="school-stat-card">
+              <div class="stat-label">Total Schools</div>
+              <div class="stat-value" id="stat-total-schools">—</div>
+            </div>
+            <div class="school-stat-card">
+              <div class="stat-label">Total Students</div>
+              <div class="stat-value" id="stat-total-students">—</div>
+            </div>
+            <div class="school-stat-card">
+              <div class="stat-label">Unassigned Students</div>
+              <div class="stat-value" id="stat-unassigned">—</div>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="filters-row">
+            <input type="text" id="search-input" class="input-field" placeholder="Search schools..." style="flex:2;max-width:400px;" />
+          </div>
+
+          <!-- Schools Table -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:30px;"></th>
+                  <th>School Name</th>
+                  <th>Address</th>
+                  <th>Students</th>
+                  <th>Contact Phone</th>
+                  <th>Principal</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="school-table-body">
+                <tr class="empty-row">
+                  <td colspan="7">Loading schools...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- School Form Modal -->
+  <div id="school-modal" class="modal modal-lg hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="school-modal-title">Add School</h3>
+        <button id="btn-close-modal" class="btn-icon" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="form-error" class="error-message hidden"></div>
+        <form id="school-form">
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="form-school-name">School Name *</label>
+              <input type="text" id="form-school-name" class="input-field" required placeholder="e.g. Phoenix High School" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="form-school-address">Address (search with Google Places)</label>
+              <input type="text" id="form-school-address" class="input-field" placeholder="Start typing an address..." style="border-color:#D4A843;" />
+              <input type="hidden" id="form-school-lat" />
+              <input type="hidden" id="form-school-lng" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-contact-phone">Contact Phone</label>
+              <input type="text" id="form-contact-phone" class="input-field" placeholder="e.g. 011 123 4567" />
+            </div>
+            <div class="form-group">
+              <label for="form-contact-email">Contact Email</label>
+              <input type="email" id="form-contact-email" class="input-field" placeholder="e.g. info@school.co.za" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="form-principal-name">Principal Name</label>
+              <input type="text" id="form-principal-name" class="input-field" placeholder="e.g. Mr. J. van der Merwe" />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btn-cancel-form" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="btn-save-school" class="btn btn-primary">Save School</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h3>Confirm Delete</h3>
+      </div>
+      <div class="modal-body">
+        <p id="delete-message">Are you sure you want to delete this school? Students assigned to this school will not be deleted but will lose their school assignment.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-delete" class="btn btn-secondary">Cancel</button>
+        <button id="btn-confirm-delete" class="btn btn-danger">Delete School</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../scripts/init.js"></script>
+  <script src="../scripts/auth-guard.js"></script>
+  <script type="module" src="../scripts/supabase-bundle.js"></script>
+  <script src="../scripts/google-places.js"></script>
+  <script src="../scripts/schools.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src https://*.supabase.co; style-src 'self' 'unsafe-inline';" />
+  <title>Audit Log - Phoenix Transport</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <style>
+    .dashboard-layout {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #5C0E1A 0%, #8B1A2B 100%);
+      color: var(--color-white);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 0 16px 20px;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-brand h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      flex: 1;
+    }
+
+    .sidebar-nav li a {
+      display: block;
+      padding: 10px 20px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sidebar-nav li a:hover,
+    .sidebar-nav li a.active {
+      background-color: rgba(212, 168, 67, 0.15);
+      color: #D4A843;
+      border-left: 3px solid #D4A843;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-footer button {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-family: var(--font-family);
+    }
+
+    .sidebar-footer button:hover {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    /* Audit Filters */
+    .audit-filters {
+      background: var(--color-surface);
+      border-radius: var(--border-radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-border);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .filter-group .input-field,
+    .filter-group select {
+      min-width: 150px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Auto-refresh toggle */
+    .auto-refresh-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .auto-refresh-toggle label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text-light);
+      cursor: pointer;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      border-radius: 20px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: var(--color-primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(16px);
+    }
+
+    /* Audit table specifics */
+    .audit-table-container {
+      background: var(--color-surface);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--color-border);
+      overflow: hidden;
+    }
+
+    .audit-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .audit-table thead {
+      background: #f8f6f3;
+    }
+
+    .audit-table th {
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .audit-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0ede8;
+      font-size: 12px;
+      vertical-align: top;
+    }
+
+    .audit-table tbody tr:hover {
+      background: rgba(139, 26, 43, 0.02);
+    }
+
+    .audit-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Event type badges */
+    .event-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .event-badge--create { background: #d4edda; color: #155724; }
+    .event-badge--update { background: #d1ecf1; color: #0c5460; }
+    .event-badge--delete { background: #f8d7da; color: #721c24; }
+    .event-badge--login { background: #e2e3f1; color: #383d6e; }
+    .event-badge--default { background: #f0ede8; color: var(--color-text-light); }
+
+    /* Details expandable cell */
+    .details-cell {
+      max-width: 300px;
+    }
+
+    .details-toggle {
+      cursor: pointer;
+      color: var(--color-primary);
+      font-size: 11px;
+      font-weight: 500;
+      text-decoration: underline;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+
+    .details-toggle:hover {
+      color: var(--color-primary-light);
+    }
+
+    .details-content {
+      display: none;
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: #f8f6f3;
+      border-radius: var(--border-radius-sm);
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+      color: var(--color-text);
+    }
+
+    .details-content.expanded {
+      display: block;
+    }
+
+    /* Pagination */
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-top: 1px solid var(--color-border);
+      background: #faf8f5;
+    }
+
+    .pagination-info {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+
+    .pagination-controls {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pagination-controls button {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius-sm);
+      background: var(--color-surface);
+      color: var(--color-text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pagination-controls button:hover:not(:disabled) {
+      background: var(--color-primary);
+      color: var(--color-white);
+      border-color: var(--color-primary);
+    }
+
+    .pagination-controls button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Loading indicator */
+    .audit-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px 20px;
+      color: var(--color-text-muted);
+      font-size: 13px;
+    }
+
+    .audit-loading .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Result count header */
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-surface);
+    }
+
+    .results-header span {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .refresh-indicator {
+      font-size: 11px;
+      color: var(--color-success);
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .refresh-indicator.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="dashboard-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <h2>🚌 Phoenix Transport</h2>
+        </div>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="vehicles.html">Vehicles</a></li>
+          <li><a href="routes.html">Routes</a></li>
+          <li><a href="schedules.html">Schedules</a></li>
+          <li><a href="students.html">Students</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="tracking.html">Live Tracking</a></li>
+          <li><a href="billing.html">Billing</a></li>
+          <li><a href="reports.html">Reports</a></li>
+          <li><a href="audit.html" class="active">Audit Log</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="logout-btn">Sign Out</button>
+          <div style="text-align:center;margin-top:12px;font-size:10px;color:rgba(255,255,255,0.4);">
+            Developed by Freddy<br><span style="color:#D4A843;font-weight:600;letter-spacing:1px;">PhoenixInc</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="page-header">
+          <h2>Audit Log</h2>
+        </div>
+
+        <!-- Filters Panel -->
+        <section class="audit-filters">
+          <div class="filter-row">
+            <div class="filter-group">
+              <label for="filter-date-from">From</label>
+              <input type="date" id="filter-date-from" class="input-field" />
+            </div>
+            <div class="filter-group">
+              <label for="filter-date-to">To</label>
+              <input type="date" id="filter-date-to" class="input-field" />
+            </div>
+            <div class="filter-group">
+              <label for="filter-user">User</label>
+              <select id="filter-user" class="input-field">
+                <option value="">All Users</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-event-type">Event Type</label>
+              <select id="filter-event-type" class="input-field">
+                <option value="">All Events</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="filter-entity-type">Entity Type</label>
+              <select id="filter-entity-type" class="input-field">
+                <option value="">All Entities</option>
+              </select>
+            </div>
+            <div class="filter-actions">
+              <button id="btn-apply-filters" class="btn btn-primary btn-sm">Apply</button>
+              <button id="btn-clear-filters" class="btn btn-secondary btn-sm">Clear</button>
+            </div>
+            <div class="auto-refresh-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-auto-refresh" />
+                <span class="toggle-slider"></span>
+              </label>
+              <label for="toggle-auto-refresh">Auto-refresh</label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Error message -->
+        <div id="audit-error" class="error-message hidden"></div>
+
+        <!-- Loading indicator -->
+        <div id="audit-loading" class="audit-loading hidden">
+          <div class="spinner"></div>
+          <span>Loading audit records...</span>
+        </div>
+
+        <!-- Audit Table -->
+        <section id="audit-results" class="audit-table-container hidden">
+          <div class="results-header">
+            <span id="results-count">0 records</span>
+            <span id="refresh-indicator" class="refresh-indicator">● Auto-refreshing</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Event Type</th>
+                  <th>Entity Type</th>
+                  <th>Entity ID</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-bar">
+            <div class="pagination-info">
+              Page <span id="page-current">1</span> of <span id="page-total">1</span>
+            </div>
+            <div class="pagination-controls">
+              <button id="btn-page-first" disabled>First</button>
+              <button id="btn-page-prev" disabled>Prev</button>
+              <button id="btn-page-next" disabled>Next</button>
+              <button id="btn-page-last" disabled>Last</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="../scripts/init.js"></script>
+  <script src="../scripts/auth-guard.js"></script>
+  <script type="module" src="../scripts/supabase-bundle.js"></script>
+  <script src="../scripts/audit.js" defer></script>
+</body>
+</html>

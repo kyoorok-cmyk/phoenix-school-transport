@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src https://*.supabase.co; style-src 'self' 'unsafe-inline';" />
+  <title>Sign In - Phoenix School Transport</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #1E1B2E 0%, #2D1F3D 50%, #1E1B2E 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #app {
+      height: auto;
+    }
+
+    .login-container {
+      background: var(--color-white);
+      border-radius: var(--radius-xl);
+      padding: 40px;
+      width: 400px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .login-logo .icon {
+      font-size: 40px;
+    }
+
+    .login-logo h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--color-text);
+      margin-top: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .login-logo p {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    .login-error {
+      background: var(--color-danger-bg);
+      border: 1px solid #FECACA;
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--color-danger);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .login-error.visible {
+      display: flex;
+    }
+
+    .login-form .form-group {
+      margin-bottom: 16px;
+    }
+
+    .login-form .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-light);
+      display: block;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .login-form .form-group input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-family: var(--font-family);
+      outline: none;
+      transition: border-color var(--transition-fast);
+      box-sizing: border-box;
+    }
+
+    .login-form .form-group input:focus {
+      border-color: var(--color-primary);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-family);
+      color: var(--color-white);
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(139, 26, 43, 0.3);
+      transition: all var(--transition-fast);
+      margin-top: 8px;
+    }
+
+    .login-btn:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(139, 26, 43, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .login-btn:disabled {
+      background: var(--color-text-muted);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .login-footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="login-container">
+      <div class="login-logo">
+        <div class="icon">🚌</div>
+        <h1>Phoenix School Transport</h1>
+        <p>Operator Portal</p>
+      </div>
+
+      <div class="login-error" id="login-error">
+        <span>⚠️</span>
+        <span id="login-error-text"></span>
+      </div>
+
+      <form class="login-form" id="login-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="operator@school.co.za" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="login-btn" id="login-btn">Sign In</button>
+      </form>
+
+      <p class="login-footer">Phoenix School Transport Management — PhoenixInc</p>
+    </div>
+  </div>
+
+  <script src="../scripts/init.js"></script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const config = window.phoenixConfig || {};
+    const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+    const form = document.getElementById('login-form');
+    const errorBox = document.getElementById('login-error');
+    const errorText = document.getElementById('login-error-text');
+    const loginBtn = document.getElementById('login-btn');
+
+    function showError(msg) {
+      errorText.textContent = msg;
+      errorBox.classList.add('visible');
+    }
+
+    function hideError() {
+      errorBox.classList.remove('visible');
+    }
+
+    // Check if already logged in
+    (async function checkExistingSession() {
+      try {
+        const stored = localStorage.getItem('phoenix-desktop-auth');
+        if (stored) {
+          const sessionData = JSON.parse(stored);
+          if (sessionData.access_token) {
+            const { data: { user }, error } = await supabase.auth.getUser(sessionData.access_token);
+            if (user && !error) {
+              const role = user.user_metadata?.role;
+              if (role === 'operator' || role === 'admin') {
+                window.location.href = 'dashboard.html';
+                return;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Invalid session, continue to show login
+        localStorage.removeItem('phoenix-desktop-auth');
+      }
+    })();
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      hideError();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!email || !password) {
+        showError('Email and password are required.');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in...';
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          showError(error.message || 'Login failed. Check your credentials.');
+          return;
+        }
+
+        if (!data.user || !data.session) {
+          showError('Login failed. No session returned.');
+          return;
+        }
+
+        const role = data.user.user_metadata?.role;
+        if (role !== 'operator' && role !== 'admin') {
+          await supabase.auth.signOut();
+          showError('Access denied: operator or admin role required.');
+          return;
+        }
+
+        // Store session for use by other pages
+        localStorage.setItem('phoenix-desktop-auth', JSON.stringify({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            role: role,
+            tenant_id: data.user.user_metadata?.tenant_id || null,
+            display_name: data.user.user_metadata?.display_name || data.user.email,
+          },
+        }));
+
+        // Redirect to dashboard
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        showError(err.message || 'An unexpected error occurred.');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>

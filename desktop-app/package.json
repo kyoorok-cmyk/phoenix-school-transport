@@ -1,0 +1,31 @@
+﻿{
+  "name": "phoenix-school-transport-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:properties": "vitest run tests/properties/",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "fast-check": "^3.23.2",
+    "typescript": "^5.4.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  },
+  "build": {
+    "appId": "com.phoenixinc.school-transport",
+    "productName": "Phoenix School Transport",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

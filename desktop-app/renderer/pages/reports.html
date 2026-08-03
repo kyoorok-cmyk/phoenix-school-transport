@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src https://*.supabase.co; style-src 'self' 'unsafe-inline';" />
+  <title>Reports - Phoenix Transport</title>
+  <link rel="stylesheet" href="../styles/global.css" />
+  <link rel="stylesheet" href="../styles/reports.css" />
+  <style>
+    .dashboard-layout {
+      display: flex;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #5C0E1A 0%, #8B1A2B 100%);
+      color: var(--color-white);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-brand {
+      padding: 0 16px 20px;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-brand h2 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      flex: 1;
+    }
+
+    .sidebar-nav li a {
+      display: block;
+      padding: 10px 20px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sidebar-nav li a:hover,
+    .sidebar-nav li a.active {
+      background-color: rgba(212, 168, 67, 0.15);
+      color: #D4A843;
+      border-left: 3px solid #D4A843;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-footer button {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-family: var(--font-family);
+    }
+
+    .sidebar-footer button:hover {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    /* Print-specific styles for PDF export */
+    @media print {
+      .sidebar,
+      .report-controls-panel,
+      .export-actions,
+      .sidebar-footer,
+      .page-header button {
+        display: none !important;
+      }
+
+      .dashboard-layout {
+        display: block;
+      }
+
+      .main-content {
+        padding: 0;
+      }
+
+      .report-panel {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="dashboard-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <h2>🚌 Phoenix Transport</h2>
+        </div>
+        <ul class="sidebar-nav">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="vehicles.html">Vehicles</a></li>
+          <li><a href="routes.html">Routes</a></li>
+          <li><a href="schedules.html">Schedules</a></li>
+          <li><a href="students.html">Students</a></li>
+          <li><a href="schools.html">Schools</a></li>
+          <li><a href="tracking.html">Live Tracking</a></li>
+          <li><a href="billing.html">Billing</a></li>
+          <li><a href="reports.html" class="active">Reports</a></li>
+          <li><a href="audit.html">Audit Log</a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="logout-btn">Sign Out</button>
+          <div style="text-align:center;margin-top:12px;font-size:10px;color:rgba(255,255,255,0.4);">
+            Developed by Freddy<br><span style="color:#D4A843;font-weight:600;letter-spacing:1px;">PhoenixInc</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="page-header">
+          <h2>Reports &amp; Analytics</h2>
+        </div>
+
+        <!-- Dashboard Key Metrics -->
+        <section id="dashboard-metrics">
+          <div class="report-stats-grid dashboard-metrics-grid">
+            <div class="report-stat metric-card">
+              <span class="stat-label">Active Students</span>
+              <span class="stat-value" id="metric-active-students">—</span>
+            </div>
+            <div class="report-stat metric-card">
+              <span class="stat-label">Active Routes</span>
+              <span class="stat-value" id="metric-active-routes">—</span>
+            </div>
+            <div class="report-stat metric-card">
+              <span class="stat-label">Fleet Utilisation</span>
+              <span class="stat-value" id="metric-fleet-utilisation">—</span>
+            </div>
+            <div class="report-stat metric-card">
+              <span class="stat-label">Monthly Revenue</span>
+              <span class="stat-value" id="metric-monthly-revenue">—</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Report Controls -->
+        <section id="report-controls-section">
+          <div class="report-controls-panel">
+            <div class="control-row">
+              <div class="form-group">
+                <label for="report-type">Report Type</label>
+                <select id="report-type" class="input-field">
+                  <option value="daily_trip_summary">Daily Trip Summary</option>
+                  <option value="monthly_attendance">Monthly Attendance</option>
+                  <option value="monthly_revenue">Monthly Revenue</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="report-date-from">From</label>
+                <input type="date" id="report-date-from" class="input-field" />
+              </div>
+              <div class="form-group">
+                <label for="report-date-to">To</label>
+                <input type="date" id="report-date-to" class="input-field" />
+              </div>
+              <div class="form-group">
+                <label for="report-route-filter">Route (optional)</label>
+                <select id="report-route-filter" class="input-field">
+                  <option value="">All Routes</option>
+                </select>
+              </div>
+              <div class="control-actions">
+                <button id="btn-generate-report" class="btn btn-primary">Generate Report</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Report Loading -->
+        <div id="report-loading" class="report-loading hidden">
+          <div class="loading-spinner"></div>
+          <span>Generating report...</span>
+        </div>
+
+        <!-- Report Error -->
+        <div id="report-error" class="error-message hidden"></div>
+
+        <!-- Report Display Area -->
+        <section id="report-display" class="hidden">
+          <div class="report-header-info">
+            <h3 id="report-title">Report</h3>
+            <p class="report-generated-date">Generated: <span id="report-generated-date"></span></p>
+          </div>
+
+          <!-- Export Actions -->
+          <div class="export-actions">
+            <button id="btn-export-csv" class="btn btn-secondary">Export CSV</button>
+            <button id="btn-export-pdf" class="btn btn-secondary">Export PDF</button>
+          </div>
+
+          <!-- Summary Stats (dynamic) -->
+          <div id="report-summary-panel" class="report-panel">
+            <h4>Summary</h4>
+            <div id="report-summary-stats" class="report-stats-grid">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Data Tables (dynamic) -->
+          <div id="report-tables-container">
+            <!-- Tables inserted dynamically per report type -->
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="../scripts/init.js"></script>
+  <script src="../scripts/auth-guard.js"></script>
+  <script type="module" src="../scripts/supabase-bundle.js"></script>
+  <script src="../scripts/reports.js" defer></script>
+</body>
+</html>
