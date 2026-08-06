@@ -10,6 +10,31 @@ export function Login({ onLoginSuccess }: LoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  async function handleForgotPassword(e: Event) {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/#/reset-password`
+      });
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setResetSent(true);
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -176,6 +201,18 @@ export function Login({ onLoginSuccess }: LoginProps) {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <a href="#" onClick={handleForgotPassword} style={{ fontSize: '13px', color: '#8B1A2B', textDecoration: 'none', cursor: 'pointer' }}>
+            Forgot your password?
+          </a>
+        </div>
+
+        {resetSent && (
+          <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: '8px', padding: '10px 14px', color: '#065F46', fontSize: '13px', marginTop: '16px', textAlign: 'center' }}>
+            Reset link sent to <strong>{email}</strong>. Check your inbox.
+          </div>
+        )}
 
         <p style={{ textAlign: 'center', fontSize: '11px', color: '#94A3B8', marginTop: '20px' }}>
           Phoenix School Transport Management — PhoenixInc
